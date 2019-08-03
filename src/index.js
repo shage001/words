@@ -63,6 +63,7 @@ class Game extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
+            loggedIn: false,
             input: '',
             word: '',
             definitions: [],
@@ -75,7 +76,16 @@ class Game extends React.Component {
     }
     
     getWord = async () => {
-        const response = await fetch(wordsServerURL);
+        const data = {
+            endpoint: 'word',
+        }
+        const response = await fetch(wordsServerURL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
         const body = await response.json();
 
         if (response.status !== 200) {
@@ -83,6 +93,26 @@ class Game extends React.Component {
         }
         return body;
     };
+
+    handleLogIn = async (password) => {
+        const data = {
+            endpoint: 'login',
+            password: password,
+        };
+        const response = await fetch(wordsServerURL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+        const body = await response.json();
+
+        if (response.status !== 200) {
+            throw Error(body.message);
+        }
+        return body;
+    }
 
     getWordAndUpdateState() {
         this.getWord()
@@ -149,43 +179,66 @@ class Game extends React.Component {
         }
     }
 
+    handleLogInEnter(e) {
+        if (e.key === "Enter") {
+            this.handleLogIn(this.state.input)
+                .then(res => {
+                    if (res.data === 'success') {
+                        this.setState({
+                            loggedIn: true,
+                            input: '',
+                        })
+                    }
+                });
+        }
+    }
+
     render() {
         return (
             <div className="text-center">
-                <h1>Words</h1>
-                <div className="quiz">
-                    <div className="definition-wrapper">
-                        <Definitions
-                            definitions={this.state.definitions}
+
+                {!this.state.loggedIn &&
+                    <div>
+                        <h2>Log in</h2>
+                        <Textbox
+                          input={this.state.input}
+                          onChange={(e) => this.handleChange(e)}
+                          onKeyPress={(e) => this.handleLogInEnter(e)}
                         />
                     </div>
-                    {this.state.showAnswer &&
-                        <div className="answer-wrapper">
-                            <span className="answer">{this.state.answers[this.state.curQuestion]}</span>
-                        </div>
-                    }
-                    <Textbox
-                      input={this.state.input}
-                      onChange={(e) => this.handleChange(e)}
-                      onKeyPress={(e) => this.handleKeyPress(e)}
-                    />
+                }
+
+                {this.state.loggedIn &&
                     <div>
-                        <button className={`button ${this.state.buttonDisplay}`} onClick={() => this.handleGiveUp()}>
-                            {buttonMessageMap[this.state.buttonDisplay]}
-                        </button>
+                        <h1>Words</h1>
+                        <div className="quiz">
+                            <div className="definition-wrapper">
+                                <Definitions
+                                    definitions={this.state.definitions}
+                                />
+                            </div>
+                            {this.state.showAnswer &&
+                                <div className="answer-wrapper">
+                                    <span className="answer">{this.state.answers[this.state.curQuestion]}</span>
+                                </div>
+                            }
+                            <Textbox
+                              input={this.state.input}
+                              onChange={(e) => this.handleChange(e)}
+                              onKeyPress={(e) => this.handleKeyPress(e)}
+                            />
+                            <div>
+                                <button className={`button ${this.state.buttonDisplay}`} onClick={() => this.handleGiveUp()}>
+                                    {buttonMessageMap[this.state.buttonDisplay]}
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                </div>
+                }
             </div>
         );
     }
 }
-
-
-// function parseNumber(number) {
-//     number = number.replace(/\([0-9]\)/g, '');
-
-//     return number;
-// }
 
 
 function parseDefinition(definition) {
