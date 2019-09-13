@@ -42,6 +42,31 @@ class Definitions extends React.Component {
 }
 
 
+class Phrases extends React.Component {
+
+    render() {
+        var phrases = this.props.phrases.slice();
+
+        const phrasesList = phrases.map((phrase, i) => {
+            return (
+                <tr className="definition">
+                    <td className="definition-number">{i+1}.</td>
+                    <td className="definition-definition">{phrase}</td>
+                </tr>
+            );
+        });
+
+        return (
+            <table className="definitions">
+                <tbody>
+                    {phrasesList}
+                </tbody>
+            </table>
+        ); 
+    }
+}
+
+
 class Textbox extends React.Component {
   render() {
     return (
@@ -64,9 +89,11 @@ class Game extends React.Component {
         super(props);
         this.state = {
             loggedIn: false,
+            done: false,
             input: '',
             word: '',
             definitions: [],
+            phrases: [],
             buttonDisplay: 'give-up',  // 'give-up', 'correct', 'incorrect'
         };
     }
@@ -78,6 +105,25 @@ class Game extends React.Component {
     getWord = async () => {
         const data = {
             endpoint: 'word',
+        }
+        const response = await fetch(wordsServerURL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data),
+        });
+        const body = await response.json();
+
+        if (response.status !== 200) {
+            throw Error(body.message);
+        }
+        return body;
+    };
+
+    getPhrases = async () => {
+        const data = {
+            endpoint: 'phrase',
         }
         const response = await fetch(wordsServerURL, {
             method: 'POST',
@@ -121,6 +167,19 @@ class Game extends React.Component {
                 this.setState({
                     word: res.data.word,
                     definitions: JSON.parse(JSON.stringify(res.data.definitions)),
+                });
+            })
+            .catch(err => {
+                console.error(err);
+            });
+    }
+
+    getPhrasesAndUpdateState() {
+        this.getPhrases()
+            .then(res => {
+                console.log(res);
+                this.setState({
+                    phrases: res.data.phrases,
                 });
             })
             .catch(err => {
@@ -193,6 +252,13 @@ class Game extends React.Component {
         }
     }
 
+    handleDone(e) {
+        this.setState({
+            done: true,
+        });
+        this.getPhrasesAndUpdateState();
+    }
+
     render() {
         return (
             <div className="text-center">
@@ -208,7 +274,7 @@ class Game extends React.Component {
                     </div>
                 }
 
-                {this.state.loggedIn &&
+                {this.state.loggedIn && !this.state.done &&
                     <div>
                         <h1>Words</h1>
                         <div className="quiz">
@@ -217,11 +283,6 @@ class Game extends React.Component {
                                     definitions={this.state.definitions}
                                 />
                             </div>
-                            {this.state.showAnswer &&
-                                <div className="answer-wrapper">
-                                    <span className="answer">{this.state.answers[this.state.curQuestion]}</span>
-                                </div>
-                            }
                             <Textbox
                               input={this.state.input}
                               onChange={(e) => this.handleChange(e)}
@@ -231,6 +292,24 @@ class Game extends React.Component {
                                 <button className={`button ${this.state.buttonDisplay}`} onClick={() => this.handleGiveUp()}>
                                     {buttonMessageMap[this.state.buttonDisplay]}
                                 </button>
+                            </div>
+                            <div>
+                                <button className="button done" onClick={() => this.handleDone()}>
+                                    Done
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                }
+
+                {this.state.done &&
+                    <div>
+                        <h1>Words</h1>
+                        <div className="quiz">
+                            <div className="definition-wrapper">
+                                <Phrases
+                                    phrases={this.state.phrases}
+                                />
                             </div>
                         </div>
                     </div>
